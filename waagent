@@ -28,7 +28,7 @@ import base64
 import httplib
 import os
 import os.path
-import platform
+#import platform
 import pwd
 import re
 import shutil
@@ -81,6 +81,22 @@ GuestAgentLongName = "Windows Azure Linux Agent"
 GuestAgentVersion = "WALinuxAgent-2.0.7-pre"
 ProtocolVersion = "2012-11-30" #WARNING this value is used to confirm the correct fabric protocol.
 
+class Platform(object):
+    def __init__(self):
+        return None
+    def uname(self):
+        return ('Linux', 'android-emulator', '3.10.40', '#57-Ubuntu SMP Tue Jul 15 03:51:08 UTC 2014', 'x86', 'x86')
+    def release(self):
+        return "3.10.40"
+    def linux_distribution(self, full_distribution_name):
+        return ('Android', '4.4', 'trusty')
+    def dist(self):
+        return self.linux_distribution()
+    def system(self):
+        return 'Linux'
+        
+platform = Platform()
+
 Config = None
 WaAgent = None
 DiskActivated = False
@@ -95,7 +111,7 @@ RulesFiles = [ "/lib/udev/rules.d/75-persistent-net-generator.rules",
 VarLibDhcpDirectories = ["/var/lib/dhclient", "/var/lib/dhcpcd", "/var/lib/dhcp"]
 EtcDhcpClientConfFiles = ["/etc/dhcp/dhclient.conf", "/etc/dhcp3/dhclient.conf"]
 global LibDir
-LibDir = "/var/lib/waagent"
+LibDir = "/data/waa"
 global provisioned
 provisioned=False
 global provisionError
@@ -175,7 +191,7 @@ class AbstractDistro(object):
                               , 'openssl', 'sfdisk', 'fdisk', 'mkfs', 'chpasswd', 'sed', 'grep', 'sudo' ]
         self.init_script_file='/etc/init.d/waagent'
         self.agent_package_name='WALinuxAgent'
-        self.fileBlackList = [ "/root/.bash_history", "/var/log/waagent.log",'/etc/resolv.conf' ]        
+        self.fileBlackList = [ "/root/.bash_history", "/data/waa/waagent.log",'/etc/resolv.conf' ]        
         self.agent_files_to_uninstall = ["/etc/waagent.conf", "/etc/logrotate.d/waagent", "/etc/sudoers.d/waagent"]
         self.grubKernelBootOptionsFile = '/etc/default/grub'
         self.grubKernelBootOptionsLine = 'GRUB_CMDLINE_LINUX_DEFAULT='
@@ -1200,6 +1216,234 @@ class UbuntuDistro(debianDistro):
         Error("Can't find host key: {0}".format(path))
         return False
 
+############################################################    
+#	AndroidDistro
+############################################################    
+class AndroidDistro(AbstractDistro):
+    """
+    Android defines distro for Android
+
+    Generic methods and attributes are kept here, distribution specific attributes
+    and behavior are to be placed in the concrete child named distroDistro, where
+    distro is the string returned by calling python platform.linux_distribution()[0].
+    So for CentOS the derived class is called 'centosDistro'.
+    """
+
+    def __init__(self):
+        """
+        Generic Attributes go here.  These are based on 'majority rules'.
+        This __init__() may be called or overriden by the child.
+        """
+        super(AndroidDistro,self).__init__()
+        self.agent_service_name = 'android-waagent'
+        self.selinux=False
+        self.service_cmd='/system/bin/service'
+        self.ssh_service_restart_option='restart'
+        self.ssh_service_name='ssh'
+        self.ssh_config_file='/etc/ssh/sshd_config'
+        self.hostname_file_path='/etc/hostname'
+        self.dhcp_client_name='dhclient'
+        self.requiredDeps = [ 'route', 'reboot', 'ssh-keygen', 'openssl', 'grep' ]
+        self.init_script_file=''
+        self.agent_package_name='android-waagent'
+        self.fileBlackList = [ "/root/.bash_history", "/data/log/waagent.log" ]
+        self.grubKernelBootOptionsFile = '/etc/default/grub'
+        self.grubKernelBootOptionsLine = 'GRUB_CMDLINE_LINUX_DEFAULT='
+        self.getpidcmd = 'pidof'
+        self.mount_dvd_cmd = 'mount'
+        self.sudoers_dir_base = '/etc'
+        self.waagent_conf_file = WaagentConf
+        self.shadow_file_mode=0600
+        
+    def setHostname(self,name):
+        """
+        Shell call to hostname.
+        Returns resulting exit code.
+        """
+        # TODO
+        # return Run('hostname ' + name)
+        
+    def publishHostname(self,name):
+        """
+        Set the contents of the hostname file to 'name'.
+        Return 1 on failure.
+        """
+        # TODO
+        return 0
+        
+    def installAgentServiceScriptFiles(self):
+        """
+        Create the waagent support files for service installation.
+        Called by registerAgentService()
+        Abstract Virtual Function.  Over-ridden in concrete Distro classes.
+        """
+        pass
+
+    def registerAgentService(self):
+        """
+        Calls installAgentService to create service files.
+        Shell exec service registration commands. (e.g. chkconfig --add waagent)
+        Abstract Virtual Function.  Over-ridden in concrete Distro classes.
+        """
+        pass
+    
+    def uninstallAgentService(self):
+        """
+        Call service subsystem to remove waagent script.
+        Abstract Virtual Function.  Over-ridden in concrete Distro classes.
+        """
+        pass
+
+    def unregisterAgentService(self):
+        """
+        Calls self.stopAgentService and call self.uninstallAgentService()
+        """
+        self.stopAgentService()
+        self.uninstallAgentService()
+    
+    def startAgentService(self):
+        """
+        Service call to start the Agent service
+        """
+        return 0
+        
+    def stopAgentService(self):
+        """
+        Service call to stop the Agent service
+        """
+        return 0
+    
+    def restartSshService(self):
+        """
+        Service call to re(start) the SSH service
+        """
+        return 0
+
+    
+    def deleteRootPassword(self):
+        """
+        Generic root password removal.
+        """
+        return 0
+    
+    def changePass(self,user,password):
+        return 0
+    
+    def load_ata_piix(self):
+        pass
+
+    def unload_ata_piix(self):
+        """
+        Generic function to remove ata_piix.ko.
+        """
+        pass
+        
+    def deprovisionWarnUser(self):
+        """
+        Generic user warnings used at deprovision.
+        """
+        print("WARNING! Nameserver configuration in /etc/resolv.conf will be deleted.")
+
+    def deprovisionDeleteFiles(self):
+        """
+        Files to delete when VM is deprovisioned
+        """
+        return 0
+    
+    def uninstallDeleteFiles(self):
+        """
+        NA
+        """
+        return 0
+    
+    def checkDependencies(self):
+        """
+        Generic dependency check.
+        Return 1 unless all dependencies are satisfied.
+        """
+        return 0
+
+    def packagedInstall(self,buildroot):
+        """
+        Called from setup.py for use by RPM.
+        Copies generated files waagent.conf, under the buildroot.
+        """
+        return 0
+
+    def GetIpv4Address(self):
+        """
+        Return the ip of the 
+        first active non-loopback interface.
+        """
+        addr=''
+        iface,addr=GetFirstActiveNetworkInterfaceNonLoopback()
+        return addr
+
+    def GetMacAddress(self):
+        return GetMacAddress()
+
+    def GetInterfaceName(self):
+        return GetFirstActiveNetworkInterfaceNonLoopback()[0]
+
+    def RestartInterface(self, iface):
+        Run("ifdown " + iface + " && ifup " + iface)
+
+    def CreateAccount(self,user, password, expiration, thumbprint):
+        return CreateAccount(user, password, expiration, thumbprint)
+    
+    def DeleteAccount(self,user):
+        return DeleteAccount(user)
+
+    def ActivateResourceDisk(self):
+        """
+        Format, mount, and if specified in the configuration
+        set resource disk as swap.
+        """
+        pass
+
+    def Install(self):
+        pass
+
+    def mediaHasFilesystem(self,dsk):
+        return True
+    
+    def mountDVD(self,dvd,location):
+        return RunGetOutput(self.mount_dvd_cmd + ' ' + dvd + ' ' + location)
+
+    def GetHome(self):
+        return GetHome()
+
+    def getDhcpClientName(self):
+        return self.dhcp_client_name
+
+    def initScsiDiskTimeout(self):
+        """
+        Set the SCSI disk timeout when the agent starts running
+        """
+        pass
+
+    def setScsiDiskTimeout(self):
+        """
+        Iterate all SCSI disks(include hot-add) and set their timeout if their value are different from the OS.RootDeviceScsiTimeout
+        """
+        pass
+
+    def setBlockDeviceTimeout(self, device, timeout):
+        """
+        Set SCSI disk timeout by set /sys/block/sd*/device/timeout
+        """
+        pass
+
+    def waitForSshHostKey(self, path):
+        """
+        Provide a dummy waiting, since by default, ssh host key is created by waagent and the key
+        should already been created.
+        """
+        if(os.path.isfile(path)):
+            return True
+        else:
+            Error("Can't find host key: {0}".format(path))
+            return False
 
 ############################################################    
 #	LinuxMintDistro
@@ -1351,9 +1595,9 @@ class FreeBSDDistro(AbstractDistro):
         self.agent_package_name='WALinuxAgent'
         self.fileBlackList = [ "/root/.bash_history", "/var/log/waagent.log",'/etc/resolv.conf' ]        
         self.agent_files_to_uninstall = ["/etc/waagent.conf", "/usr/local/etc/sudoers.d/waagent"]
-        self.grubKernelBootOptionsFile = '/boot/loader.conf'
+        self.grubKernelBootOptionsFile = None
         self.grubKernelBootOptionsLine = ''
-        self.getpidcmd = 'pgrep -n'
+        self.getpidcmd = None
         self.mount_dvd_cmd = 'dd bs=2048 count=33 skip=295 if=' # custom data max len is 64k 
         self.sudoers_dir_base = '/usr/local/etc'
         self.waagent_conf_file = FreeBSDWaagentConf
@@ -4342,17 +4586,15 @@ class Agent(Util):
         Spawn the VMM startup script.
         """
         Log("Starting Microsoft System Center VMM Initialization Process")
-        pid = subprocess.Popen(["/bin/bash","/mnt/cdrom/secure/"+VMM_STARTUP_SCRIPT_NAME,"-p /mnt/cdrom/secure/ "]).pid
-        time.sleep(5)
+        # pid = subprocess.Popen(["/system/bin/sh","/mnt/cdrom/secure/"+VMM_STARTUP_SCRIPT_NAME,"-p /mnt/cdrom/secure/ "]).pid
+        # time.sleep(5)
         sys.exit(0)
         
     def TryUnloadAtapiix(self):
         """
         If global modloaded is True, then we loaded the ata_piix kernel module, unload it.
         """
-        if modloaded:
-            Run("rmmod ata_piix.ko",chk_err=False)
-            Log("Unloaded ata_piix.ko driver for ATAPI CD-ROM")
+        pass
 
     def TryLoadAtapiix(self):
         """
@@ -4360,39 +4602,7 @@ class Agent(Util):
         If successful, set global modloaded to True.
         If unable to load module leave modloaded False.
         """
-        global modloaded
-        modloaded=False
-        retcode,krn=RunGetOutput('uname -r')
-        krn_pth='/lib/modules/'+krn.strip('\n')+'/kernel/drivers/ata/ata_piix.ko'
-        if Run("lsmod | grep ata_piix",chk_err=False) == 0 :
-            Log("Module " + krn_pth + " driver for ATAPI CD-ROM is already present.")
-            return 0
-        if retcode:
-            Error("Unable to provision: Failed to call uname -r")
-            return "Unable to provision: Failed to call uname"
-        if os.path.isfile(krn_pth):
-            retcode,output=RunGetOutput("insmod " + krn_pth,chk_err=False)
-        else:
-            Log("Module " + krn_pth + " driver for ATAPI CD-ROM does not exist.")
-            return 1
-        if retcode != 0:
-            Error('Error calling insmod for '+ krn_pth + ' driver for ATAPI CD-ROM')
-            return retcode
-        time.sleep(1)
-        # check 3 times if the mod is loaded
-        for i in range(3):
-            if Run('lsmod | grep ata_piix'):
-                continue
-            else :
-                modloaded=True
-                break
-        if not modloaded:
-            Error('Unable to load '+ krn_pth + ' driver for ATAPI CD-ROM')
-            return 1
-        
-        Log("Loaded " + krn_pth + " driver for ATAPI CD-ROM")
-        
-        # we have succeeded loading the ata_piix mod if it can be done.
+        pass
 
     def SearchForVMMStartup(self):
         """
@@ -4548,10 +4758,10 @@ class Agent(Util):
         ReportReady if provisioning is complete.
         If provisioning failed, call ReportNotReady("ProvisioningFailed", provisionError)
         """
-        SetFileContents("/var/run/waagent.pid", str(os.getpid()) + "\n")
+        SetFileContents("/data/waa/waagent.pid", str(os.getpid()) + "\n")
 
         # Determine if we are in VMM.  Spawn VMM_STARTUP_SCRIPT_NAME if found.
-        self.SearchForVMMStartup()
+        # self.SearchForVMMStartup()
         ipv4=''
         while ipv4 == '' or ipv4 == '0.0.0.0' :
             ipv4=MyDistro.GetIpv4Address()
@@ -4988,7 +5198,7 @@ def main():
     if len(sys.argv) == 1:
         sys.exit(Usage())
 
-    LoggerInit('/var/log/waagent.log','/dev/console')
+    LoggerInit('/data/waa/waagent.log','/dev/console')
     global LinuxDistro
     LinuxDistro=DistInfo()[0]
     global MyDistro

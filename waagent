@@ -80,6 +80,8 @@ GuestAgentName = "WALinuxAgent"
 GuestAgentLongName = "Windows Azure Linux Agent"
 GuestAgentVersion = "WALinuxAgent-2.0.7-pre"
 ProtocolVersion = "2012-11-30" #WARNING this value is used to confirm the correct fabric protocol.
+IsRunningAndroid = None
+IsRunningAzure = None
 
 class Platform(object):
     def __init__(self):
@@ -96,6 +98,91 @@ class Platform(object):
         return 'Linux'
         
 platform = Platform()
+
+
+GoalStateXml = """<?xml version="1.0" encoding="utf-8"?>
+<GoalState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="goalstate10.xsd">
+  <Version>2012-11-30</Version>
+  <Incarnation>1</Incarnation>
+  <Machine>
+    <ExpectedState>Started</ExpectedState>
+    <LBProbePorts>
+      <Port>16001</Port>
+    </LBProbePorts>
+    <ExpectHealthReport>FALSE</ExpectHealthReport>
+  </Machine>
+  <Container>
+    <ContainerId>90efe59f-ec8c-4159-a131-ea35fbc52cd8</ContainerId>
+    <RoleInstanceList>
+      <RoleInstance>
+        <InstanceId>5e3605049524475a8d5591cfc4f8f1b4.prem-ubuntu1</InstanceId>
+        <State>Started</State>
+        <Configuration>
+          <HostingEnvironmentConfig>http://10.102.240.20:80/machine/90efe59f-ec8c-4159-a131-ea35fbc52cd8/5e3605049524475a8d5591cfc4f8f1b4.prem%2Dubuntu1?comp=config&amp;type=hostingEnvironmentConfig&amp;incarnation=1</HostingEnvironmentConfig>
+          <SharedConfig>http://10.102.240.20:80/machine/90efe59f-ec8c-4159-a131-ea35fbc52cd8/5e3605049524475a8d5591cfc4f8f1b4.prem%2Dubuntu1?comp=config&amp;type=sharedConfig&amp;incarnation=1</SharedConfig>
+          <FullConfig>http://10.102.240.20:80/machine/90efe59f-ec8c-4159-a131-ea35fbc52cd8/5e3605049524475a8d5591cfc4f8f1b4.prem%2Dubuntu1?comp=config&amp;type=fullConfig&amp;incarnation=1</FullConfig>
+          <ConfigName>5e3605049524475a8d5591cfc4f8f1b4.0.5e3605049524475a8d5591cfc4f8f1b4.0.prem-ubuntu1.1.xml</ConfigName>
+        </Configuration>
+      </RoleInstance>
+    </RoleInstanceList>
+  </Container>
+</GoalState>"""
+
+HostingEnvironmentConfigXml = """<?xml version="1.0" encoding="utf-8"?>
+<HostingEnvironmentConfig version="1.0.0.0" goalStateIncarnation="1">
+  <Deployment name="5e3605049524475a8d5591cfc4f8f1b4" guid="{5501f8c5-1519-446d-9e76-f3b5abb4a331}" incarnation="0" isNonCancellableTopologyChangeEnabled="false">
+    <Service name="prem-ubuntu1" guid="{00000000-0000-0000-0000-000000000000}" />
+    <ServiceInstance name="5e3605049524475a8d5591cfc4f8f1b4.0" guid="{9d1a62ea-2aa7-4ba1-875d-f76e1ef4b682}" />
+  </Deployment>
+  <Incarnation number="1" instance="prem-ubuntu1" guid="{1bb3c9f0-bd7c-48cf-b028-8ac7b264760f}" />
+  <Role guid="{801499d8-8214-580d-7bea-36841fc85a2c}" name="prem-ubuntu1" hostingEnvironmentVersion="1" software="" softwareType="ApplicationPackage" entryPoint="" parameters="" settleTimeSeconds="0" />
+  <HostingEnvironmentSettings name="full" Runtime="rd_fabric_stable3.140520-1437.RuntimePackage_1.0.0.13.zip">
+    <CAS mode="full" />
+    <PrivilegeLevel mode="max" /><AdditionalProperties><CgiHandlers></CgiHandlers></AdditionalProperties></HostingEnvironmentSettings>
+  <ApplicationSettings>
+    <Setting name="__ModelData" value="&lt;m role=&quot;prem-ubuntu1&quot; xmlns=&quot;urn:azure:m:v1&quot;>&lt;r name=&quot;prem-ubuntu1&quot;>&lt;e name=&quot;openInternalEndpoint&quot; />&lt;e name=&quot;SSH&quot; />&lt;/r>&lt;/m>" />
+  </ApplicationSettings>
+</HostingEnvironmentConfig>"""        
+
+SharedConfigXml = """<?xml version="1.0" encoding="utf-8"?>
+<SharedConfig version="1.0.0.0" goalStateIncarnation="1">
+  <Deployment name="5e3605049524475a8d5591cfc4f8f1b4" guid="{5501f8c5-1519-446d-9e76-f3b5abb4a331}" incarnation="0" isNonCancellableTopologyChangeEnabled="false">
+    <Service name="prem-ubuntu1" guid="{00000000-0000-0000-0000-000000000000}" />
+    <ServiceInstance name="5e3605049524475a8d5591cfc4f8f1b4.0" guid="{9d1a62ea-2aa7-4ba1-875d-f76e1ef4b682}" />
+  </Deployment>
+  <Incarnation number="1" instance="prem-ubuntu1" guid="{1bb3c9f0-bd7c-48cf-b028-8ac7b264760f}" />
+  <Role guid="{801499d8-8214-580d-7bea-36841fc85a2c}" name="prem-ubuntu1" settleTimeSeconds="0" />
+  <LoadBalancerSettings timeoutSeconds="0" waitLoadBalancerProbeCount="8">
+    <Probes>
+      <Probe name="D41D8CD98F00B204E9800998ECF8427E" />
+      <Probe name="807521B84D07C49644F7FC8E38DD4458" />
+    </Probes>
+  </LoadBalancerSettings>
+  <OutputEndpoints>
+    <Endpoint name="prem-ubuntu1:openInternalEndpoint" type="SFS">
+      <Target instance="prem-ubuntu1" endpoint="openInternalEndpoint" />
+    </Endpoint>
+  </OutputEndpoints>
+  <Instances>
+    <Instance id="prem-ubuntu1" address="10.102.240.3">
+      <FaultDomains randomId="0" updateId="0" updateCount="0" />
+      <InputEndpoints>
+        <Endpoint name="openInternalEndpoint" address="10.102.240.3" protocol="any" isPublic="false" enableDirectServerReturn="false" isDirectAddress="false" disableStealthMode="false">
+          <LocalPorts>
+            <LocalPortSelfManaged />
+          </LocalPorts>
+        </Endpoint>
+        <Endpoint name="SSH" address="10.102.240.3:22" protocol="tcp" hostName="prem-ubuntu1ContractContract" isPublic="true" loadBalancedPublicAddress="23.102.162.202:22" enableDirectServerReturn="false" isDirectAddress="false" disableStealthMode="false">
+          <LocalPorts>
+            <LocalPortRange from="22" to="22" />
+          </LocalPorts>
+        </Endpoint>
+      </InputEndpoints>
+    </Instance>
+  </Instances>
+</SharedConfig>"""
+
+
 
 Config = None
 WaAgent = None
@@ -117,6 +204,8 @@ provisioned=False
 global provisionError
 provisionError=None
 HandlerStatusToAggStatus = {"installed":"Installing", "enabled":"Ready", "unintalled":"NotReady", "disabled":"NotReady"}
+
+
 
 WaagentConf = """\
 #
@@ -1249,8 +1338,8 @@ class AndroidDistro(AbstractDistro):
         self.fileBlackList = [ "/root/.bash_history", "/data/log/waagent.log" ]
         self.grubKernelBootOptionsFile = '/etc/default/grub'
         self.grubKernelBootOptionsLine = 'GRUB_CMDLINE_LINUX_DEFAULT='
-        self.getpidcmd = 'pidof'
-        self.mount_dvd_cmd = 'mount'
+        self.getpidcmd = None
+        self.mount_dvd_cmd = 'mount -r -t udf '
         self.sudoers_dir_base = '/etc'
         self.waagent_conf_file = WaagentConf
         self.shadow_file_mode=0600
@@ -1369,18 +1458,39 @@ class AndroidDistro(AbstractDistro):
         Copies generated files waagent.conf, under the buildroot.
         """
         return 0
-
     def GetIpv4Address(self):
+        if IsRunningAndroid == False:
+            return super(AndroidDistro, self).GetIpv4Address()
+        addr,macaddr = self.GetIPInfo()
+        return addr
+
+    def GetIPInfo(self):
         """
         Return the ip of the 
         first active non-loopback interface.
         """
+        cmd='/system/bin/netcfg'
         addr=''
-        iface,addr=GetFirstActiveNetworkInterfaceNonLoopback()
-        return addr
+        Log('Running ' + cmd)
+        code,output=RunGetOutput(cmd, chk_err=True)
+        Log('output = ' + output)
+        if code == 0:
+            lines = output.split('\n')
+            for line in lines:
+                if line.find('eth0') != -1:
+                    addr = line.split()[2].split('/')[0]
+                    macaddr = line.split()[4].replace(':', '')
+        if addr != '':
+            Log('found ip address = ' + addr + ', macaddr = ' + macaddr)
+        else:
+            Log('Could not find IP address')
+        return addr, macaddr
 
     def GetMacAddress(self):
-        return GetMacAddress()
+        if IsRunningAndroid == False:
+            return super(AndroidDistro, self).GetMacAddress()
+        addr,macaddr = self.GetIPInfo()
+        return HexStringToByteArray(macaddr)
 
     def GetInterfaceName(self):
         return GetFirstActiveNetworkInterfaceNonLoopback()[0]
@@ -2054,7 +2164,7 @@ def RunGetOutput(cmd,chk_err=True):
     """
     LogIfVerbose(cmd)
     try:                                     
-        output=subprocess.check_output(cmd,stderr=subprocess.STDOUT,shell=True)
+        output=subprocess.check_output(cmd,stderr=subprocess.STDOUT,shell=True,executable=Config.get("OS.Shell"))
     except subprocess.CalledProcessError,e :
         if chk_err :
             Error('CalledProcessError.  Error Code is ' + str(e.returncode)  )
@@ -2722,6 +2832,11 @@ class EnvMonitor(object):
         Monitor dhcp client pid and hostname.
         If dhcp clinet process re-start has occurred, reset routes, dhcp with fabric.
         """
+        while not self.shutdown:
+            time.sleep(5)
+
+        # TODO: This is commented out
+        """
         publish = ConfigurationProvider().get("Provisioning.MonitorHostName")
         dhcpcmd = MyDistro.getpidcmd+ ' ' + MyDistro.getDhcpClientName()
         dhcppid = RunGetOutput(dhcpcmd)[1]
@@ -2756,6 +2871,7 @@ class EnvMonitor(object):
                 if child.poll() != None:
                     Children.remove(child)
             time.sleep(5)
+            """
 
     def SetHostName(self, name):
         """
@@ -3833,12 +3949,19 @@ class GoalState(Util):
                                                             if e.localName == "HostingEnvironmentConfig":
                                                                 self.HostingEnvironmentConfigUrl = GetNodeTextData(e)
                                                                 LogIfVerbose("HostingEnvironmentConfigUrl:" + self.HostingEnvironmentConfigUrl)
-                                                                self.HostingEnvironmentConfigXml = self.HttpGetWithHeaders(self.HostingEnvironmentConfigUrl)
+                                                                if IsRunningAzure == False:
+                                                                    self.HostingEnvironmentConfigXml = HostingEnvironmentConfigXml
+                                                                else:
+                                                                    self.HostingEnvironmentConfigXml = self.HttpGetWithHeaders(self.HostingEnvironmentConfigUrl)
                                                                 self.HostingEnvironmentConfig = HostingEnvironmentConfig().Parse(self.HostingEnvironmentConfigXml)
                                                             elif e.localName == "SharedConfig":
                                                                 self.SharedConfigUrl = GetNodeTextData(e)
                                                                 LogIfVerbose("SharedConfigUrl:" + self.SharedConfigUrl)
-                                                                self.SharedConfigXml = self.HttpGetWithHeaders(self.SharedConfigUrl)
+                                                                if IsRunningAzure == False:
+                                                                    self.SharedConfigXml = SharedConfigXml
+                                                                else:
+                                                                    self.SharedConfigXml = self.HttpGetWithHeaders(self.SharedConfigUrl)
+                                                                LogIfVerbose("SharedConfigXml = " + self.SharedConfigXml)
                                                                 self.SharedConfig = SharedConfig().Parse(self.SharedConfigXml)
                                                             elif e.localName == "ExtensionsConfig":
                                                                 self.ExtensionsConfigUrl = GetNodeTextData(e)
@@ -4168,7 +4291,18 @@ class Agent(Util):
         #</Versions>
         global ProtocolVersion
         protocolVersionSeen = False
-        node = xml.dom.minidom.parseString(self.HttpGetWithoutHeaders("/?comp=versions")).childNodes[0]
+        if IsRunningAzure == False:
+            xmlstr = """<?xml version="1.0" encoding="utf-8"?>\r\n<Versions>\r\n  <Preferred>\r\n
+                <Version>2012-11-30</Version>\r\n  </Preferred>\r\n  <Supported>\r\n
+                <Version>2012-11-30</Version>\r\n    <Version>2012-09-15</Version>\r\n
+                <Version>2012-05-15</Version>\r\n    <Version>2011-12-31</Version>\r\n
+                <Version>2011-10-15</Version>\r\n    <Version>2011-08-31</Version>\r\n
+                <Version>2011-04-07</Version>\r\n    <Version>2010-12-15</Version>\r\n
+                <Version>2010-28-10</Version>\r\n  </Supported>\r\n</Versions>"""
+        else:
+            xmlstr = self.HttpGetWithoutHeaders("/?comp=versions")
+
+        node = xml.dom.minidom.parseString(xmlstr).childNodes[0]
         if node.localName != "Versions":
             Error("CheckVersions: root not Versions")
             return False
@@ -4408,8 +4542,8 @@ class Agent(Util):
         for retry in range(0, maxRetry):
             try:
                 #Open DHCP port if iptables is enabled.
-                Run("iptables -D INPUT -p udp --dport 68 -j ACCEPT",chk_err=False)  # We supress error logging on error.
-                Run("iptables -I INPUT -p udp --dport 68 -j ACCEPT",chk_err=False)  # We supress error logging on error.
+                # Run("iptables -D INPUT -p udp --dport 68 -j ACCEPT",chk_err=False)  # We supress error logging on error.
+                # Run("iptables -I INPUT -p udp --dport 68 -j ACCEPT",chk_err=False)  # We supress error logging on error.
                 strRetry = str(retry)
                 prefix = "DoDhcpWork: try=" + strRetry
                 LogIfVerbose(prefix)
@@ -4434,7 +4568,7 @@ class Agent(Util):
                     # network unreachable when the default gateway is not set up.
                     ifname=MyDistro.GetInterfaceName()
                     Log("DoDhcpWork: Missing default route - adding broadcast route for DHCP.")
-                    Run("route add 255.255.255.255 dev " + ifname,chk_err=False)   # We supress error logging on error.
+                    # Run("route add 255.255.255.255 dev " + ifname,chk_err=False)   # We supress error logging on error.
                 if MyDistro.dhcp_client_name == 'wickedd-dhcp4':
                     Run("service " + MyDistro.dhcp_client_name + " stop",chk_err=False)
                 sock.bind(("0.0.0.0", 68)) 
@@ -4462,7 +4596,7 @@ class Agent(Util):
                 sock.close()
                 if missingDefaultRoute:
                     #We added this route - delete it
-                    Run("route del 255.255.255.255 dev " + ifname,chk_err=False)  # We supress error logging on error.
+                    # Run("route del 255.255.255.255 dev " + ifname,chk_err=False)  # We supress error logging on error.
                     Log("DoDhcpWork: Removing broadcast route for DHCP.")
                 if MyDistro.dhcp_client_name == 'wickedd-dhcp4':
                     Run("service " + MyDistro.dhcp_client_name + " start",chk_err=False)
@@ -4497,7 +4631,10 @@ class Agent(Util):
         for retry in range(1, maxRetry + 1):
             strRetry = str(retry)
             log("retry UpdateGoalState,retry=" + strRetry)
-            goalStateXml = self.HttpGetWithHeaders("/machine/?comp=goalstate")
+            if IsRunningAzure == False:
+                goalStateXml = GoalStateXml
+            else:
+                goalStateXml = self.HttpGetWithHeaders("/machine/?comp=goalstate")
             if goalStateXml != None:
                 break
             log = Log
@@ -4524,9 +4661,12 @@ class Agent(Util):
                         + "</ContainerId><RoleInstanceList><Role><InstanceId>"
                         + self.GoalState.RoleInstanceId
                         + "</InstanceId><Health><State>Ready</State></Health></Role></RoleInstanceList></Container></Health>")
-        a = self.HttpPost("/machine?comp=health", healthReport)
-        if a != None:
-            return a.getheader("x-ms-latest-goal-state-incarnation-number")
+        LogIfVerbose("HealthReport (ready ) = " + healthReport)
+
+        if IsRunningAzure == True:
+            a = self.HttpPost("/machine?comp=health", healthReport)
+            if a != None:
+                return a.getheader("x-ms-latest-goal-state-incarnation-number")
         return None
 
     def ReportNotReady(self, status, desc):
@@ -4543,9 +4683,12 @@ class Agent(Util):
                         + "</InstanceId><Health><State>NotReady</State>"
                         + "<Details><SubStatus>" + status + "</SubStatus><Description>" + desc + "</Description></Details>"
                         + "</Health></Role></RoleInstanceList></Container></Health>")
-        a = self.HttpPost("/machine?comp=health", healthReport)
-        if a != None:
-            return a.getheader("x-ms-latest-goal-state-incarnation-number")
+        LogIfVerbose("HealthReport (not ready) = " + healthReport)
+
+        if IsRunningAzure == True:
+            a = self.HttpPost("/machine?comp=health", healthReport)
+            if a != None:
+                return a.getheader("x-ms-latest-goal-state-incarnation-number")
         return None
 
     def ReportRoleProperties(self, thumbprint):
@@ -4558,9 +4701,12 @@ class Agent(Util):
                         + "<Id>" + self.GoalState.RoleInstanceId + "</Id>"
                         + "<Properties><Property name=\"CertificateThumbprint\" value=\"" + thumbprint + "\" /></Properties>"
                         + "</RoleInstance></RoleInstances></Container></RoleProperties>")
-        a = self.HttpPost("/machine?comp=roleProperties", roleProperties)
-        Log("Posted Role Properties. CertificateThumbprint=" + thumbprint)
-        return a
+        LogIfVerbose("ReportRoleProperties = " + roleProperties)
+        if IsRunningAzure == True:
+            a = self.HttpPost("/machine?comp=roleProperties", roleProperties)
+            Log("Posted Role Properties. CertificateThumbprint=" + thumbprint)
+            return a
+        return None
 
     def LoadBalancerProbeServer_Shutdown(self):
         """
@@ -4574,11 +4720,13 @@ class Agent(Util):
         """
         Create ssl certificate for https communication with endpoint server.
         """
+        LogIfVerbose("Generating certificate.")
         Run(Openssl + " req -x509 -nodes -subj /CN=LinuxTransport -days 32768 -newkey rsa:2048 -keyout TransportPrivate.pem -out TransportCert.pem")
         cert = ""
         for line in GetFileContents("TransportCert.pem").split('\n'):
             if not "CERTIFICATE" in line:
                 cert += line.rstrip()
+        LogIfVerbose("Certificate generated: " + cert)
         return cert
 
     def DoVmmStartup(self):
@@ -4680,6 +4828,8 @@ class Agent(Util):
             if dvds == None :
                 continue
             dvd = '/dev/'+dvds.group(0)
+        if IsRunningAndroid == True:
+            dvd = '/dev/block/sr0'
         if dvd == None:
             # No DVD device detected
             Error("No DVD device detected, unable to provision.")
@@ -4693,11 +4843,11 @@ class Agent(Util):
                     break
                 Log("Waiting for DVD - sleeping 1 - "+str(i+1)+" try...")
                 time.sleep(1)
-        if os.path.exists('/mnt/cdrom/secure') == False:
-            CreateDir("/mnt/cdrom/secure", "root", 0700)
+        if os.path.exists('/data/mnt/cdrom') == False:
+            CreateDir("/data/mnt/cdrom", "root", 0700)
         #begin mount loop - 5 tries - 5 sec wait between
         for retry in range(1,6):
-            location='/mnt/cdrom/secure'
+            location='/data/mnt/cdrom'
             retcode,output=MyDistro.mountDVD(dvd,location)
             Log(output[:-1])
             if retcode == 0:
@@ -4709,26 +4859,29 @@ class Agent(Util):
             Log("mount failed on attempt #" + str(retry) )
             Log("mount loop sleeping 5...")
             time.sleep(5)
-        if not os.path.isfile("/mnt/cdrom/secure/ovf-env.xml"):
+        if not os.path.isfile("/data/mnt/cdrom/ovf-env.xml"):
             Error("Unable to provision: Missing ovf-env.xml on DVD.")
             return "Failed to retrieve provisioning data (0x02)."
-        ovfxml = (GetFileContents(u"/mnt/cdrom/secure/ovf-env.xml",asbin=False)) # use unicode here to ensure correct codec gets used.
+        ovfxml = (GetFileContents(u"/data/mnt/cdrom/ovf-env.xml",asbin=False)) # use unicode here to ensure correct codec gets used.
         if ord(ovfxml[0]) > 128 and ord(ovfxml[1]) > 128 and ord(ovfxml[2]) > 128 :
             ovfxml = ovfxml[3:] # BOM is not stripped.  First three bytes are > 128 and not unicode chars so we ignore them.
         ovfxml=ovfxml.strip(chr(0x00)) # we may have NULLs.
         ovfxml=ovfxml[ovfxml.find('<?'):] # chop leading text if present
         SetFileContents("ovf-env.xml", re.sub("<UserPassword>.*?<", "<UserPassword>*<", ovfxml))
-        Run("umount " + dvd,chk_err=False)
+        Run("umount " + location,chk_err=False)
         MyDistro.unload_ata_piix()
         error = None
         if ovfxml != None:
             Log("Provisioning image using OVF settings in the DVD.")
             ovfobj = OvfEnv().Parse(ovfxml)
             if ovfobj != None:
+                # TODO: This is disabled for now
+                """
                 error = ovfobj.Process()
                 if error :
                     Error ("Provisioning image FAILED " + error)
                     return ("Provisioning image FAILED " + error)
+                """
         # This is done here because regenerated SSH host key pairs may be potentially overwritten when processing the ovfxml
         fingerprint = RunGetOutput("ssh-keygen -lf /etc/ssh/ssh_host_" + type + "_key.pub")[1].rstrip().split()[1].replace(':','')
         self.ReportRoleProperties(fingerprint)
@@ -4782,7 +4935,11 @@ class Agent(Util):
             pass
 
         Log("Probing for Windows Azure environment.")
-        self.Endpoint = self.DoDhcpWork()
+        if IsRunningAzure == False:
+            Log("Debug: Using static endpoint")
+            self.Endpoint = '10.102.240.20'
+        else:
+            self.Endpoint = self.DoDhcpWork()
 
         if self.Endpoint == None:
             Log("Windows Azure environment not detected.")
@@ -5175,6 +5332,7 @@ def SwitchCwd():
     Create if not present.
     """
     CreateDir(LibDir, "root", 0700)
+    Log('SwitchCwd: ' + LibDir)
     os.chdir(LibDir)
 
 def Usage():
@@ -5198,7 +5356,7 @@ def main():
     if len(sys.argv) == 1:
         sys.exit(Usage())
 
-    LoggerInit('/data/waa/waagent.log','/dev/console')
+    LoggerInit('/data/waa/waagent.log','/dev/console', verbose=True)
     global LinuxDistro
     LinuxDistro=DistInfo()[0]
     global MyDistro
@@ -5223,7 +5381,11 @@ def main():
             args.append(a)
     global Config
     Config = ConfigurationProvider()
-    
+    global IsRunningAndroid
+    global IsRunningAzure
+    IsRunningAndroid = Config.get("Debug.IsRunningAndroid") == 'y'
+    IsRunningAzure = Config.get("Debug.IsRunningAzure") == 'y'
+
     verbose = Config.get("Logs.Verbose")
     if verbose != None and verbose.lower().startswith("y"):
         myLogger.verbose=True

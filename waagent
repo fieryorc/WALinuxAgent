@@ -182,6 +182,14 @@ SharedConfigXml = """<?xml version="1.0" encoding="utf-8"?>
   </Instances>
 </SharedConfig>"""
 
+g_OvfXml = """<?xml version="1.0" encoding="utf-8"?>
+<Environment xmlns="http://schemas.dmtf.org/ovf/environment/1" xmlns:oe="http://schemas.dmtf.org/ovf/environment/1" xmlns:wa="http://schemas.microsoft.com/windowsazure" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <wa:ProvisioningSection><wa:Version>1.0</wa:Version><LinuxProvisioningConfigurationSet xmlns="http://schemas.microsoft.com/windowsazure" xmlns:i="http://www.w3.org/2001/XMLSchema-instance"><ConfigurationSetType>LinuxProvisioningConfiguration</ConfigurationSetType><HostName>prem-android7</HostName><UserName>azureuser</UserName><DisableSshPasswordAuthentication>true</DisableSshPasswordAuthentication><SSH><PublicKeys><PublicKey><Fingerprint>EA395C2877DFACC592E3D8056E21227A22A1522A</Fingerprint><Path>/home/azureuser/.ssh/authorized_keys</Path></PublicKey></PublicKeys></SSH></LinuxProvisioningConfigurationSet></wa:ProvisioningSection>
+
+  <wa:PlatformSettingsSection><wa:Version>1.0</wa:Version><PlatformSettings xmlns="http://schemas.microsoft.com/windowsazure" xmlns:i="http://www.w3.org/2001/XMLSchema-instance"><KmsServerHostname>kms.core.windows.net</KmsServerHostname><ProvisionGuestAgent>true</ProvisionGuestAgent><GuestAgentPackageName>Win7_Win8_IaaS_rd_art_stable_140703-0050_GuestAgentPackage.zip</GuestAgentPackageName></PlatformSettings></wa:PlatformSettingsSection>
+</Environment>"""
+
 
 
 Config = None
@@ -406,6 +414,7 @@ class AbstractDistro(object):
         Generic sshDeployPublicKey - over-ridden in some concrete Distro classes due to minor differences in openssl packages deployed
         """
         error=0
+        Log("Deploying public key to path = " + path + ", fingerprint = " + fprint)
         SshPubKey = OvfEnv().OpensslToSsh(fprint)
         if SshPubKey != None:
             AppendFileContents(path, SshPubKey)
@@ -1343,6 +1352,7 @@ class AndroidDistro(AbstractDistro):
         self.sudoers_dir_base = '/etc'
         self.waagent_conf_file = WaagentConf
         self.shadow_file_mode=0600
+        self.hostname = ""
         
     def setHostname(self,name):
         """
@@ -1351,6 +1361,8 @@ class AndroidDistro(AbstractDistro):
         """
         # TODO
         # return Run('hostname ' + name)
+        self.hostname = name
+        return 0
         
     def publishHostname(self,name):
         """
@@ -2878,6 +2890,10 @@ class EnvMonitor(object):
         Generic call to MyDistro.setHostname(name).
         Complian to Log on error.
         """
+        Log("Setting hostname = " + name)
+        # TODO: Fix this.
+        if IsRunningAndroid == True:
+            self.published = True
         if socket.gethostname() == name:
             self.published = True
         elif MyDistro.setHostname(name):
@@ -2924,6 +2940,7 @@ class Certificates(object):
         """
         Parse multiple certificates into seperate files.
         """
+        LogIfVerbose("certificates.Parse")
         self.reinitialize()
         SetFileContents("Certificates.xml", xmlText)
         dom = xml.dom.minidom.parseString(xmlText)
@@ -2942,6 +2959,8 @@ class Certificates(object):
             + "Content-Type: application/x-pkcs7-mime; name=\"Certificates.p7m\"\n"
             + "Content-Transfer-Encoding: base64\n\n"
             + GetNodeTextData(dom.getElementsByTagName("Data")[0]))
+        # TODO: Disable this for now.
+        return self
         if Run(Openssl + " cms -decrypt -in Certificates.p7m -inkey TransportPrivate.pem -recip TransportCert.pem | " + Openssl + " pkcs12 -nodes -password pass: -out Certificates.pem"):
             Error("Certificates.Parse: Failed to extract certificates from CMS message.")
             return self
@@ -4200,6 +4219,7 @@ class OvfEnv(object):
         Wait for WaAgent.EnvMonitor.IsHostnamePublished().
         Restart ssh service.
         """
+        LogIfVerbose("OvfEnv.Process")
         error = None
         if self.ComputerName == None :
             return "Error: Hostname missing"
@@ -4227,22 +4247,27 @@ class OvfEnv(object):
         if sel :
             MyDistro.setSelinuxEnforce(0)
         home = MyDistro.GetHome()
+        if len(self.SshPublicKeys) > 0:
+            Log("Found public keys: size = " + str(len(self.SshPublicKeys)))
         for pkey in self.SshPublicKeys:
-            if not os.path.isfile(pkey[0] + ".crt"):
-                Error("PublicKey not found: " + pkey[0])
-                error = "Failed to deploy public key (0x09)."
-                continue
-            path = self.PrepareDir(pkey[1])
-            if path == None:
-                Error("Invalid path: " + pkey[1] + " for PublicKey: " + pkey[0])
-                error = "Invalid path for public key (0x03)."
-                continue
-            Run(Openssl + " x509 -in " + pkey[0] + ".crt -noout -pubkey > " + pkey[0] + ".pub")
-            MyDistro.setSelinuxContext(pkey[0] + '.pub','unconfined_u:object_r:ssh_home_t:s0')
-            MyDistro.sshDeployPublicKey(pkey[0] + '.pub',path)
-            MyDistro.setSelinuxContext(path,'unconfined_u:object_r:ssh_home_t:s0')
-            if path.startswith(os.path.normpath(home + "/" + self.UserName + "/")):
-                ChangeOwner(path, self.UserName)
+            Log("Public key key = " + pkey[0] + ", path = " + pkey[1])
+            # TODO: Disable this for now as we don't have cms utility yet.
+            if IsRunningAndroid == False:
+                if not os.path.isfile(pkey[0] + ".crt"):
+                    Error("PublicKey not found: " + pkey[0])
+                    error = "Failed to deploy public key (0x09)."
+                    continue
+                path = self.PrepareDir(pkey[1])
+                if path == None:
+                    Error("Invalid path: " + pkey[1] + " for PublicKey: " + pkey[0])
+                    error = "Invalid path for public key (0x03)."
+                    continue
+                Run(Openssl + " x509 -in " + pkey[0] + ".crt -noout -pubkey > " + pkey[0] + ".pub")
+                MyDistro.setSelinuxContext(pkey[0] + '.pub','unconfined_u:object_r:ssh_home_t:s0')
+                MyDistro.sshDeployPublicKey(pkey[0] + '.pub',path)
+                MyDistro.setSelinuxContext(path,'unconfined_u:object_r:ssh_home_t:s0')
+                if path.startswith(os.path.normpath(home + "/" + self.UserName + "/")):
+                    ChangeOwner(path, self.UserName)
         for keyp in self.SshKeyPairs:
             if not os.path.isfile(keyp[0] + ".prv"):
                 Error("KeyPair not found: " + keyp[0])
@@ -4264,6 +4289,7 @@ class OvfEnv(object):
         if sel :
             MyDistro.setSelinuxEnforce(1)
         while not WaAgent.EnvMonitor.IsHostnamePublished():
+            LogIfVerbose("Waiting for Hostname to be published")
             time.sleep(1)
         MyDistro.restartSshService()
         return error
@@ -4855,42 +4881,47 @@ class Agent(Util):
         if os.path.exists('/data/mnt/cdrom') == False:
             CreateDir("/data/mnt/cdrom", "root", 0700)
         #begin mount loop - 5 tries - 5 sec wait between
-        for retry in range(1,6):
-            location='/data/mnt/cdrom'
-            retcode,output=MyDistro.mountDVD(dvd,location)
-            Log(output[:-1])
-            if retcode == 0:
-                Log("mount succeeded on attempt #" + str(retry) )
-                break
-            if 'is already mounted on /mnt/cdrom/secure' in output:
-                Log("Device " + dvd + " is already mounted on /mnt/cdrom/secure." + str(retry) )
-                break
-            Log("mount failed on attempt #" + str(retry) )
-            Log("mount loop sleeping 5...")
-            time.sleep(5)
-        if not os.path.isfile("/data/mnt/cdrom/ovf-env.xml"):
-            Error("Unable to provision: Missing ovf-env.xml on DVD.")
-            return "Failed to retrieve provisioning data (0x02)."
-        ovfxml = (GetFileContents(u"/data/mnt/cdrom/ovf-env.xml",asbin=False)) # use unicode here to ensure correct codec gets used.
+        if IsRunningAzure == False:
+            ovfxml = g_OvfXml
+            Log("Picking test ovf: " + ovfxml)
+        else:
+            for retry in range(1,6):
+                location='/data/mnt/cdrom'
+                retcode,output=MyDistro.mountDVD(dvd,location)
+                Log(output[:-1])
+                if retcode == 0:
+                    Log("mount succeeded on attempt #" + str(retry) )
+                    break
+                if 'is already mounted on /mnt/cdrom/secure' in output:
+                    Log("Device " + dvd + " is already mounted on /mnt/cdrom/secure." + str(retry) )
+                    break
+                Log("mount failed on attempt #" + str(retry) )
+                Log("mount loop sleeping 5...")
+                time.sleep(5)
+            if not os.path.isfile("/data/mnt/cdrom/ovf-env.xml"):
+                Error("Unable to provision: Missing ovf-env.xml on DVD.")
+                return "Failed to retrieve provisioning data (0x02)."
+            ovfxml = (GetFileContents(u"/data/mnt/cdrom/ovf-env.xml",asbin=False)) # use unicode here to ensure correct codec gets used.
+
         if ord(ovfxml[0]) > 128 and ord(ovfxml[1]) > 128 and ord(ovfxml[2]) > 128 :
             ovfxml = ovfxml[3:] # BOM is not stripped.  First three bytes are > 128 and not unicode chars so we ignore them.
         ovfxml=ovfxml.strip(chr(0x00)) # we may have NULLs.
         ovfxml=ovfxml[ovfxml.find('<?'):] # chop leading text if present
         SetFileContents("ovf-env.xml", re.sub("<UserPassword>.*?<", "<UserPassword>*<", ovfxml))
-        Run("umount " + location,chk_err=False)
-        MyDistro.unload_ata_piix()
+
+        if IsRunningAzure == True:
+            Run("umount " + location,chk_err=False)
+            MyDistro.unload_ata_piix()
         error = None
+
         if ovfxml != None:
             Log("Provisioning image using OVF settings in the DVD.")
             ovfobj = OvfEnv().Parse(ovfxml)
             if ovfobj != None:
-                # TODO: This is disabled for now
-                """
                 error = ovfobj.Process()
                 if error :
                     Error ("Provisioning image FAILED " + error)
                     return ("Provisioning image FAILED " + error)
-                """
         # This is done here because regenerated SSH host key pairs may be potentially overwritten when processing the ovfxml
         fingerprint = RunGetOutput("ssh-keygen -lf /data/ssh/ssh_host_" + type + "_key.pub")[1].rstrip().split()[1].replace(':','')
         self.ReportRoleProperties(fingerprint)

@@ -1359,7 +1359,7 @@ class AndroidDistro(AbstractDistro):
         """
         # TODO
         return 0
-        
+
     def installAgentServiceScriptFiles(self):
         """
         Create the waagent support files for service installation.
@@ -3134,7 +3134,7 @@ class ExtensionsConfig(object):
         self.Util=Util()
         dom = xml.dom.minidom.parseString(xmlText)
         LogIfVerbose(xmlText)
-        self.plugin_log_dir='/var/log/azure'
+        self.plugin_log_dir='/data/waa/extensions'
         if not os.path.exists(self.plugin_log_dir):
             os.mkdir(self.plugin_log_dir)
         try:
@@ -3598,7 +3598,8 @@ class ExtensionsConfig(object):
             Error('Error parsing ExtensionsConfig.  Unable to send status reports')
             return None
         self.Util.Endpoint=uri.split('/')[2]
-        self.Util.HttpPutBlockBlob(uri, status)
+        # TODO: This doesn't work.
+        # self.Util.HttpPutBlockBlob(uri, status)
         LogIfVerbose('Status report '+status+' sent to ' + uri)
         return True
 
@@ -4127,7 +4128,6 @@ class OvfEnv(object):
         """
         Create home dir for self.UserName
         Change owner and return path.
-        """
         home = MyDistro.GetHome()
         # Expand HOME variable if present in path
         path = os.path.normpath(filepath.replace("$HOME", home))
@@ -4139,6 +4139,8 @@ class OvfEnv(object):
             if path.startswith(os.path.normpath(home + "/" + self.UserName + "/")):
                 ChangeOwner(dir, self.UserName)
         return path
+        """
+        return "/data/ssh"
 
     def NumberToBytes(self, i):
         """
@@ -4205,15 +4207,22 @@ class OvfEnv(object):
         if error: return error
         if self.DisableSshPasswordAuthentication:
             filepath = "/etc/ssh/sshd_config"
-            # Disable RFC 4252 and RFC 4256 authentication schemes.
-            ReplaceFileContentsAtomic(filepath, "\n".join(filter(lambda a: not
+            # TODO: This can't be done. Password is always disabled.
+            """
+             Disable RFC 4252 and RFC 4256 authentication schemes.
+             ReplaceFileContentsAtomic(filepath, "\n".join(filter(lambda a: not
                 (a.startswith("PasswordAuthentication") or a.startswith("ChallengeResponseAuthentication")),
                 GetFileContents(filepath).split('\n'))) + "PasswordAuthentication no\nChallengeResponseAuthentication no\n")
             Log("Disabled SSH password-based authentication methods.")
+            """
+            Log("Skipping password auth disable")
+
+        """
         if self.AdminPassword != None:
             MyDistro.changePass('root',self.AdminPassword)
         if self.UserName != None:
             error = MyDistro.CreateAccount(self.UserName, self.UserPassword, None, None)
+        """
         sel = MyDistro.isSelinuxRunning()
         if sel :
             MyDistro.setSelinuxEnforce(0)
@@ -4819,8 +4828,8 @@ class Agent(Util):
             type = "rsa"
         regenerateKeys = Config.get("Provisioning.RegenerateSshHostKeyPair")
         if regenerateKeys == None or regenerateKeys.lower().startswith("y"):
-            Run("rm -f /etc/ssh/ssh_host_*key*")
-            Run("ssh-keygen -N '' -t " + type + " -f /etc/ssh/ssh_host_" + type + "_key")
+            Run("rm -f /data/ssh/ssh_host_*key*")
+            Run("ssh-keygen -N '' -t " + type + " -f /data/ssh/ssh_host_" + type + "_key")
             MyDistro.restartSshService()
         #SetFileContents(LibDir + "/provisioned", "")
         dvd = None
@@ -4883,7 +4892,7 @@ class Agent(Util):
                     return ("Provisioning image FAILED " + error)
                 """
         # This is done here because regenerated SSH host key pairs may be potentially overwritten when processing the ovfxml
-        fingerprint = RunGetOutput("ssh-keygen -lf /etc/ssh/ssh_host_" + type + "_key.pub")[1].rstrip().split()[1].replace(':','')
+        fingerprint = RunGetOutput("ssh-keygen -lf /data/ssh/ssh_host_" + type + "_key.pub")[1].rstrip().split()[1].replace(':','')
         self.ReportRoleProperties(fingerprint)
         delRootPass = Config.get("Provisioning.DeleteRootPassword")
         if delRootPass != None and delRootPass.lower().startswith("y"):
@@ -5011,9 +5020,9 @@ class Agent(Util):
                 if type == None:
                     type = "rsa"
 
-                host_key_path = "/etc/ssh/ssh_host_" + type + "_key.pub"
+                host_key_path = "/data/ssh/ssh_host_" + type + "_key.pub"
                 if(MyDistro.waitForSshHostKey(host_key_path)):
-                    fingerprint = RunGetOutput("ssh-keygen -lf /etc/ssh/ssh_host_" + type + "_key.pub")[1].rstrip().split()[1].replace(':','')
+                    fingerprint = RunGetOutput("ssh-keygen -lf /data/ssh/ssh_host_" + type + "_key.pub")[1].rstrip().split()[1].replace(':','')
                     self.ReportRoleProperties(fingerprint)
 
             if program != None and DiskActivated == True:
@@ -5315,7 +5324,7 @@ def Deprovision(force, deluser):
     # Remove SSH host keys
     regenerateKeys = Config.get("Provisioning.RegenerateSshHostKeyPair")
     if regenerateKeys == None or regenerateKeys.lower().startswith("y"):
-        Run("rm -f /etc/ssh/ssh_host_*key*")
+        Run("rm -f /data/ssh/ssh_host_*key*")
 
     # Remove root password
     if delRootPass != None and delRootPass.lower().startswith("y"):
